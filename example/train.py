@@ -1,5 +1,6 @@
 import argparse
 import torch
+import wandb
 
 from model.wide_res_net import WideResNet
 from model.smooth_cross_entropy import smooth_crossentropy
@@ -27,7 +28,25 @@ if __name__ == "__main__":
     parser.add_argument("--rho", default=2.0, type=int, help="Rho parameter for SAM.")
     parser.add_argument("--weight_decay", default=0.0005, type=float, help="L2 weight decay.")
     parser.add_argument("--width_factor", default=8, type=int, help="How many times wider compared to normal ResNet.")
+    parser.add_argument("--norm", default=2, type=int)
+    #parser.add_argument("--datasets")
     args = parser.parse_args()
+        
+    wandb.login(key='9119fcb005213ace0c3b5664157e9c5575a07fc5')
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="optml",
+        name = "initial_test",
+
+        # track hyperparameters and run metadata
+        config={
+            "dataset": "CIFAR-10",
+            'rho': args.rho,
+            "adaptive": args.adaptive,
+            "norm": args.norm,
+            "epochs": 10,
+        }
+    )
 
     initialize(args, seed=42)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -62,6 +81,7 @@ if __name__ == "__main__":
             with torch.no_grad():
                 correct = torch.argmax(predictions.data, 1) == targets
                 log(model, loss.cpu(), correct.cpu(), scheduler.lr())
+                wandb.log({"train_loss":loss.cpu(),"train_correct":correct.cpu(),"train_lr":scheduler.lr()})
                 scheduler(epoch)
 
         model.eval()
@@ -75,5 +95,8 @@ if __name__ == "__main__":
                 loss = smooth_crossentropy(predictions, targets)
                 correct = torch.argmax(predictions, 1) == targets
                 log(model, loss.cpu(), correct.cpu())
+                wandb.log({"eval_loss":loss.cpu(), "eval_correct":correct.cpu()})
+
+        wandb.log({"correct":correct, "loss":loss})
 
     log.flush()
