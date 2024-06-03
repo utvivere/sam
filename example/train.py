@@ -16,7 +16,7 @@ from sam import SAM
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--adaptive", default=True, type=bool, help="True if you want to use the Adaptive SAM.")
+    parser.add_argument("--adaptive", default=False, action="store_true", help"Include argument --adaptive if you want to set it to True")
     parser.add_argument("--batch_size", default=128, type=int, help="Batch size used in the training and validation loop.")
     parser.add_argument("--depth", default=16, type=int, help="Number of layers.")
     parser.add_argument("--dropout", default=0.0, type=float, help="Dropout rate.")
@@ -28,6 +28,7 @@ if __name__ == "__main__":
     parser.add_argument("--rho", default=2.0, type=float, help="Rho parameter for SAM.")
     parser.add_argument("--weight_decay", default=0.0005, type=float, help="L2 weight decay.")
     parser.add_argument("--width_factor", default=8, type=int, help="How many times wider compared to normal ResNet.")
+    parser.add_argument("--wandb_name", default="test0", type=str)
     parser.add_argument("--norm", default=2, type=int)
     #parser.add_argument("--datasets")
     args = parser.parse_args()
@@ -36,7 +37,7 @@ if __name__ == "__main__":
     wandb.init(
         # set the wandb project where this run will be logged
         project="optml",
-        name = "nonada+rho0.05",
+        name = args.wandb_name,
 
         # track hyperparameted run metadata
         config={
@@ -44,6 +45,7 @@ if __name__ == "__main__":
             'rho': args.rho,
             "adaptive": args.adaptive,
             "norm": args.norm,
+            "wandb_name": args.wandb_name,
             "epochs": 10,
         }
     )
