@@ -25,20 +25,20 @@ if __name__ == "__main__":
     parser.add_argument("--learning_rate", default=0.1, type=float, help="Base learning rate at the start of the training.")
     parser.add_argument("--momentum", default=0.9, type=float, help="SGD Momentum.")
     parser.add_argument("--threads", default=2, type=int, help="Number of CPU threads for dataloaders.")
-    parser.add_argument("--rho", default=2.0, type=int, help="Rho parameter for SAM.")
+    parser.add_argument("--rho", default=2.0, type=float, help="Rho parameter for SAM.")
     parser.add_argument("--weight_decay", default=0.0005, type=float, help="L2 weight decay.")
     parser.add_argument("--width_factor", default=8, type=int, help="How many times wider compared to normal ResNet.")
     parser.add_argument("--norm", default=2, type=int)
     #parser.add_argument("--datasets")
     args = parser.parse_args()
         
-    wandb.login(key='9119fcb005213ace0c3b5664157e9c5575a07fc5')
+    wandb.login(key='14aca18a3cf267e1aea9c50e64f59e33d3bae401')
     wandb.init(
         # set the wandb project where this run will be logged
         project="optml",
-        name = "initial_test",
+        name = "nonada+rho0.05",
 
-        # track hyperparameters and run metadata
+        # track hyperparameted run metadata
         config={
             "dataset": "CIFAR-10",
             'rho': args.rho,
@@ -63,6 +63,10 @@ if __name__ == "__main__":
         model.train()
         log.train(len_dataset=len(dataset.train))
 
+        epoch_train_loss = 0
+        epoch_train_correct = 0
+        num_train_batches = 0
+
         for batch in dataset.train:
             inputs, targets = (b.to(device) for b in batch)
 
@@ -80,12 +84,22 @@ if __name__ == "__main__":
 
             with torch.no_grad():
                 correct = torch.argmax(predictions.data, 1) == targets
+                epoch_train_loss += loss.sum().item()
+                epoch_train_correct += correct.sum().item()
+                num_train_batches += len(targets)
                 log(model, loss.cpu(), correct.cpu(), scheduler.lr())
-                wandb.log({"train_loss":loss.cpu(),"train_correct":correct.cpu(),"train_lr":scheduler.lr()})
                 scheduler(epoch)
+
+        # Compute average loss and accuracy for the epoch
+        avg_train_loss = epoch_train_loss / num_train_batches
+        avg_train_correct = epoch_train_correct / num_train_batches
 
         model.eval()
         log.eval(len_dataset=len(dataset.test))
+
+        epoch_eval_loss = 0
+        epoch_eval_correct = 0
+        num_eval_batches = 0
 
         with torch.no_grad():
             for batch in dataset.test:
@@ -94,9 +108,14 @@ if __name__ == "__main__":
                 predictions = model(inputs)
                 loss = smooth_crossentropy(predictions, targets)
                 correct = torch.argmax(predictions, 1) == targets
+                epoch_eval_loss += loss.sum().item()
+                epoch_eval_correct += correct.sum().item()
+                num_eval_batches += len(targets)
                 log(model, loss.cpu(), correct.cpu())
-                wandb.log({"eval_loss":loss.cpu(), "eval_correct":correct.cpu()})
 
-        wandb.log({"correct":correct, "loss":loss})
+        # Compute average loss and accuracy for the epoch
+        avg_eval_loss = epoch_eval_loss / num_eval_batches
+        avg_eval_correct = epoch_eval_correct / num_eval_batches
+        wandb.log({"eval_loss": avg_eval_loss, "eval_accuracy": avg_eval_correct, "train_loss": avg_train_loss, "train_accuracy": avg_train_correct})
 
     log.flush()
