@@ -43,15 +43,18 @@ if __name__ == "__main__":
     parser.add_argument("--weight_decay", default=0.0005, type=float, help="L2 weight decay.")
 
     parser.add_argument("--wandb_name", default="test0", type=str)
-    parser.add_argument("--norm", default=2, type=int)
+    parser.add_argument("--norm", default=2, type=int) # we need to varies norm later
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--nnmodel", default = "WideResNet", type = str, help = "Name of the neural networ model to be used")
     
     # parser.add_argument("--datasets")
     args = parser.parse_args()
-        
-    # wandb.login(key='14aca18a3cf267e1aea9c50e64f59e33d3bae401')
-    wandb.login(key = '325c767737b3cd92d64482fc4ab588032fc604c1')
+
+    # group api key
+    wandb.login(key='14aca18a3cf267e1aea9c50e64f59e33d3bae401')
+    # yao's api key
+    # wandb.login(key = '325c767737b3cd92d64482fc4ab588032fc604c1')
+
     wandb.init(
         # set the wandb project where this run will be logged
         project="optml",
@@ -125,8 +128,6 @@ if __name__ == "__main__":
         
         # self.epoch_state["loss"] += loss.sum().item()
         # self.epoch_state["accuracy"] += accuracy.sum().item()
-
-        wandb.log({"train_loss":train_loss,"train_correct":train_correct,"train_lr":train_lr})                
 
         # Compute average loss and accuracy for the epoch
         avg_train_loss = epoch_train_loss / num_train_batches
