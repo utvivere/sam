@@ -3,6 +3,10 @@ import torch
 import wandb
 
 from model.wide_res_net import WideResNet
+from model.resnet import ResNet, BasicBlock
+from model.pyramidnet import PyramidNet
+from model.vgg import VGG
+
 from model.smooth_cross_entropy import smooth_crossentropy
 from data.cifar import Cifar
 from utility.log import Log
@@ -16,10 +20,20 @@ from sam import SAM
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--adaptive", default=False, action="store_true", help"Include argument --adaptive if you want to set it to True")
+    parser.add_argument("--adaptive", default=False, action="store_true", help = "Include argument --adaptive if you want to set it to True")
     parser.add_argument("--batch_size", default=128, type=int, help="Batch size used in the training and validation loop.")
+    
+    # wide resnet parameters
     parser.add_argument("--depth", default=16, type=int, help="Number of layers.")
     parser.add_argument("--dropout", default=0.0, type=float, help="Dropout rate.")
+    parser.add_argument("--width_factor", default=8, type=int, help="How many times wider compared to normal ResNet.")
+
+    # resnet parameters
+    parser.add_argument("--block", default="BasicBlock", type=str, help="Block type.")
+    parser.add_argument("--num_block", default=[2, 2, 2, 2], type=int, nargs="+", help="Number of blocks per layer.")
+    parser.add_argument("--num_classes", default=100, type=int, help="Number of output classes.")
+
+
     parser.add_argument("--epochs", default=200, type=int, help="Total number of epochs.")
     parser.add_argument("--label_smoothing", default=0.1, type=float, help="Use 0.0 for no label smoothing.")
     parser.add_argument("--learning_rate", default=0.1, type=float, help="Base learning rate at the start of the training.")
@@ -27,13 +41,17 @@ if __name__ == "__main__":
     parser.add_argument("--threads", default=2, type=int, help="Number of CPU threads for dataloaders.")
     parser.add_argument("--rho", default=2.0, type=float, help="Rho parameter for SAM.")
     parser.add_argument("--weight_decay", default=0.0005, type=float, help="L2 weight decay.")
-    parser.add_argument("--width_factor", default=8, type=int, help="How many times wider compared to normal ResNet.")
+
     parser.add_argument("--wandb_name", default="test0", type=str)
     parser.add_argument("--norm", default=2, type=int)
-    #parser.add_argument("--datasets")
+    parser.add_argument("--seed", default=42, type=int)
+    parser.add_argument("--nnmodel", default = "WideResNet", type = str, help = "Name of the neural networ model to be used")
+    
+    # parser.add_argument("--datasets")
     args = parser.parse_args()
         
-    wandb.login(key='14aca18a3cf267e1aea9c50e64f59e33d3bae401')
+    # wandb.login(key='14aca18a3cf267e1aea9c50e64f59e33d3bae401')
+    wandb.login(key = '325c767737b3cd92d64482fc4ab588032fc604c1')
     wandb.init(
         # set the wandb project where this run will be logged
         project="optml",
@@ -47,15 +65,28 @@ if __name__ == "__main__":
             "norm": args.norm,
             "wandb_name": args.wandb_name,
             "epochs": 10,
+            "seed": args.seed,
+            "nnmodel" : args.nnmodel
         }
     )
 
-    initialize(args, seed=42)
+    initialize(args)
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
     dataset = Cifar(args.batch_size, args.threads)
     log = Log(log_each=10)
-    model = WideResNet(args.depth, args.width_factor, args.dropout, in_channels=3, labels=10).to(device)
+    if args.nnmodel == "WideResNet":
+        model = WideResNet(args.depth, args.width_factor, args.dropout, in_channels=3, labels=10).to(device)
+    elif args.nnmodel == "ResNet":
+        if args.block == "BasicBlock":
+            block = BasicBlock
+        model = ResNet(block, args.num_block, num_classes=args.num_classes).to(device)
+    elif args.nnmodel == "PyramidNet":
+        model = PyramidNet(args.depth, alpha=48, num_classes=10, bottleneck=True, dataset='cifar').to(device)
+    elif args.nnmodel == "VGG":
+        model = VGG(num_classes=10, depth=16, batch_norm=False).to(device)
+    else:
+        raise ValueError("Invalid model name")
 
     base_optimizer = torch.optim.SGD
     optimizer = SAM(model.parameters(), base_optimizer, rho=args.rho, adaptive=args.adaptive, lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)

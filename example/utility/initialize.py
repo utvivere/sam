@@ -2,7 +2,8 @@ import random
 import torch
 
 
-def initialize(args, seed: int):
+def initialize(args):
+    seed = args.seed
     random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
