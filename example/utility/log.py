@@ -74,10 +74,11 @@ class Log:
                 flush=True,
             )
 
-    def _eval_step(self, loss, accuracy) -> None:
+    def _eval_step(self, loss, accuracy):
         self.epoch_state["loss"] += loss.sum().item()
         self.epoch_state["accuracy"] += accuracy.sum().item()
         self.epoch_state["steps"] += loss.size(0)
+
 
     def _reset(self, len_dataset: int) -> None:
         self.start_time = time.time()
