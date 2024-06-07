@@ -63,6 +63,7 @@ if __name__ == "__main__":
         model.train()
         log.train(len_dataset=len(dataset.train))
 
+        train_loss, train_correct, train_lr = 0, 0, 0
         for batch in dataset.train:
             inputs, targets = (b.to(device) for b in batch)
 
@@ -81,12 +82,21 @@ if __name__ == "__main__":
             with torch.no_grad():
                 correct = torch.argmax(predictions.data, 1) == targets
                 log(model, loss.cpu(), correct.cpu(), scheduler.lr())
-                wandb.log({"train_loss":loss.cpu(),"train_correct":correct.cpu(),"train_lr":scheduler.lr()})
+                
+                train_loss = loss.cpu().sum().item()
+                train_correct = correct.cpu().sum().item()
+                train_lr = scheduler.lr()
                 scheduler(epoch)
+        
+        # self.epoch_state["loss"] += loss.sum().item()
+        # self.epoch_state["accuracy"] += accuracy.sum().item()
+
+        wandb.log({"train_loss":train_loss,"train_correct":train_correct,"train_lr":train_lr})                
 
         model.eval()
         log.eval(len_dataset=len(dataset.test))
 
+        eval_loss, eval_correct = 0, 0
         with torch.no_grad():
             for batch in dataset.test:
                 inputs, targets = (b.to(device) for b in batch)
@@ -95,8 +105,9 @@ if __name__ == "__main__":
                 loss = smooth_crossentropy(predictions, targets)
                 correct = torch.argmax(predictions, 1) == targets
                 log(model, loss.cpu(), correct.cpu())
-                wandb.log({"eval_loss":loss.cpu(), "eval_correct":correct.cpu()})
-
-        wandb.log({"correct":correct, "loss":loss})
+                eval_loss = loss.cpu().sum().item()
+                eval_correct = correct.cpu().sum().item()
+        
+        wandb.log({"eval_loss":eval_loss, "eval_correct":eval_correct})
 
     log.flush()
