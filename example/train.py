@@ -16,10 +16,14 @@ from utility.bypass_bn import enable_running_stats, disable_running_stats
 
 import sys; sys.path.append("..")
 from sam import SAM
+import torch.optim as optim
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
+    # optimizer
+    parser.add_argument("--optimizer", default="SAM", type=str, help="Name of the optimizer to be used: SGD, SAM")
     parser.add_argument("--adaptive", default=False, action="store_true", help = "Include argument --adaptive if you want to set it to True")
     parser.add_argument("--batch_size", default=128, type=int, help="Batch size used in the training and validation loop.")
     
@@ -69,7 +73,8 @@ if __name__ == "__main__":
             "wandb_name": args.wandb_name,
             "epochs": 10,
             "seed": args.seed,
-            "nnmodel" : args.nnmodel
+            "nnmodel" : args.nnmodel,
+            "optimizer": args.optimizer,
         }
     )
 
@@ -91,8 +96,13 @@ if __name__ == "__main__":
     else:
         raise ValueError("Invalid model name")
 
-    base_optimizer = torch.optim.SGD
-    optimizer = SAM(model.parameters(), base_optimizer, rho=args.rho, adaptive=args.adaptive, lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
+    if args.optimizer == "SGD":
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum = args.momentum, weight_decay=args.weight_decay)
+    elif args.optimizer == "SAM":
+        base_optimizer = torch.optim.SGD
+        optimizer = SAM(model.parameters(), base_optimizer, rho=args.rho, adaptive=args.adaptive, lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
+    else: 
+        raise ValueError("Invalid optimizer name")
     scheduler = StepLR(optimizer, args.learning_rate, args.epochs)
 
     for epoch in range(args.epochs):
@@ -106,17 +116,27 @@ if __name__ == "__main__":
         for batch in dataset.train:
             inputs, targets = (b.to(device) for b in batch)
 
-            # first forward-backward step
-            enable_running_stats(model)
-            predictions = model(inputs)
-            loss = smooth_crossentropy(predictions, targets, smoothing=args.label_smoothing)
-            loss.mean().backward()
-            optimizer.first_step(zero_grad=True)
+            if args.optimizer == "SAM":
+                # first forward-backward step
+                enable_running_stats(model)
+                predictions = model(inputs)
+                loss = smooth_crossentropy(predictions, targets, smoothing=args.label_smoothing)
+                loss.mean().backward()
+                optimizer.first_step(zero_grad=True)
 
-            # second forward-backward step
-            disable_running_stats(model)
-            smooth_crossentropy(model(inputs), targets, smoothing=args.label_smoothing).mean().backward()
-            optimizer.second_step(zero_grad=True)
+                # second forward-backward step
+                disable_running_stats(model)
+                smooth_crossentropy(model(inputs), targets, smoothing=args.label_smoothing).mean().backward()
+                optimizer.second_step(zero_grad=True)
+            elif args.optimizer == "SGD":
+                enable_running_stats(model)
+                optimizer.zero_grad()
+                predictions = model(inputs)
+                loss = smooth_crossentropy(predictions, targets, smoothing=args.label_smoothing)
+                loss.mean().backward()
+                optimizer.step()
+            else:
+                raise ValueError("Invalid optimizer name")
 
             with torch.no_grad():
                 correct = torch.argmax(predictions.data, 1) == targets
