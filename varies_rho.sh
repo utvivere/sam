@@ -1,8 +1,6 @@
 cd example
-# original rho: 0.01, 0.02, 0.05, 0.1, 0.2, 0.5
-# now rho: 0.01, 0.05, 0.1, 0.5
+# varies  rho: 0.01, 0.05, 0.1, 0.5
 
-# 12 runs
 # seed 0
 python train.py --rho 0.01 --wandb_name varies_rho_0.01_seed_0  --seed 0
 python train.py --rho 0.05 --wandb_name varies_rho_0.05_seed_0 --seed 0

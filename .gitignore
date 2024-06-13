@@ -128,7 +128,7 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-
+wandb/
 example/data/
 example/cifar/
 example/wandb/
