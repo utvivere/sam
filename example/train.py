@@ -1,6 +1,7 @@
 import argparse
 import torch
 import wandb
+import numpy as np
 
 from model.wide_res_net import WideResNet
 from model.resnet import ResNet, BasicBlock
@@ -47,17 +48,15 @@ if __name__ == "__main__":
     parser.add_argument("--weight_decay", default=0.0005, type=float, help="L2 weight decay.")
 
     parser.add_argument("--wandb_name", default="test0", type=str)
-    parser.add_argument("--norm", default=2, type=int) # we need to varies norm later
+    parser.add_argument("--norm", default="2", type=str) # L^2 or L^infty
     parser.add_argument("--seed", default=42, type=int)
     parser.add_argument("--nnmodel", default = "WideResNet", type = str, help = "Name of the neural networ model to be used")
     
-    # parser.add_argument("--datasets")
     args = parser.parse_args()
 
     # group api key
+    # change to your own key for logging in
     wandb.login(key='14aca18a3cf267e1aea9c50e64f59e33d3bae401')
-    # yao's api key
-    # wandb.login(key = '325c767737b3cd92d64482fc4ab588032fc604c1')
 
     wandb.init(
         # set the wandb project where this run will be logged
@@ -100,7 +99,7 @@ if __name__ == "__main__":
         optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum = args.momentum, weight_decay=args.weight_decay)
     elif args.optimizer == "SAM":
         base_optimizer = torch.optim.SGD
-        optimizer = SAM(model.parameters(), base_optimizer, rho=args.rho, adaptive=args.adaptive, lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay)
+        optimizer = SAM(model.parameters(), base_optimizer, rho=args.rho, adaptive=args.adaptive, lr=args.learning_rate, momentum=args.momentum, weight_decay=args.weight_decay, norm = args.norm)
     else: 
         raise ValueError("Invalid optimizer name")
     scheduler = StepLR(optimizer, args.learning_rate, args.epochs)

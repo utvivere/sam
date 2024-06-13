@@ -1,8 +1,4 @@
 # different norm, L2 and L_infty
-# --norm = 2
-# --norm = infty
-# @matheart
-
-
-# discard normalization
-# @shiyi
+# use seed 42
+python train.py --wandb_name ptwo --rho 0.05
+python train.py --wandb_name pinf --rho 0.05 --norm inf
