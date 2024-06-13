@@ -54,9 +54,9 @@ def gradient_descent(A_list, y, d, r, learning_rate=0.05, num_iterations=10, tol
     wandb.finish()
 
 def sam_update(U, grad, learning_rate, rho, normalize):
-    if normalize:
+    if normalize: # with normalization
         perturbation = rho * grad / np.linalg.norm(grad)
-    else:
+    else: # without normalization
         perturbation = rho * grad
     U_perturbed = U + perturbation
     return U - learning_rate * compute_gradient(A_list, y, U_perturbed), np.linalg.norm(grad)
@@ -83,6 +83,7 @@ def sam(A_list, y, d, r, rho, normalize, learning_rate=0.5, num_iterations=10, t
 
         wandb.log({"loss": loss, "grad_norm": grad_norm})
 
+# Follow Yan Dai et.al. paper's setup
 d = 100  
 r = 5   
 m = 5 * d * r 
@@ -93,16 +94,19 @@ U_true = np.random.randn(d, r)
 print('Spectral norm of U_true before normalization:', np.linalg.norm(U_true, ord=2))
 U_true = normalize_columns(U_true)
 X_star = U_true @ U_true.T
+# check it satisfies the requirement
 print('Spectral norm of U_true after normalization:', np.linalg.norm(U_true, ord=2))
 
 A_list = [np.random.randn(d, d) for _ in range(m)]
 
 y = np.array([np.trace(A.T @ X_star) for A in A_list]) 
 
+# run on gradient descent
 gradient_descent(A_list, y, d, r)
 
-rhos = [ 0.001, 0.005, 0.01, 0.1] #0.001, 0.005, 0.01,
-# around 0.4xxx
+# vary rho
+rhos = [ 0.001, 0.005, 0.01, 0.1]
+
 for rho in rhos:
     print(f"Running USAM with rho={rho}")
     wandb.init(project="usam", name=f"usam_rho_{rho}")

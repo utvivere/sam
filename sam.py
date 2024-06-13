@@ -51,7 +51,7 @@ class SAM(torch.optim.Optimizer):
     def _grad_norm(self):
         shared_device = self.param_groups[0]["params"][0].device  # put everything on the same device, in case of model parallelism
         
-        if self.norm == "2":
+        if self.norm == "2": # L^2 norm
             norm = torch.norm(
                         torch.stack([
                             ((torch.abs(p) if group["adaptive"] else 1.0) * p.grad).norm(p=2).to(shared_device)
@@ -60,7 +60,7 @@ class SAM(torch.optim.Optimizer):
                         ]),
                         p=2
                 )
-        else:
+        else: # L^infty norm
             norm = torch.norm(
                     torch.stack([
                         ((torch.abs(p) if group["adaptive"] else 1.0) * p.grad).norm(p=np.inf).to(shared_device)
